@@ -1,0 +1,104 @@
+!pip install numpy
+!pip install scikit-learn
+!pip install scikit-learn-preprocessing
+!pip install Keras
+!pip install keras-layers
+!pip install keras-models
+!pip install tensorflow
+!pip install tensorflow-keras
+
+import numpy as np
+from sklearn.datasets import load_wine
+from sklearn.preprocessing import MinMaxScaler, OneHotEncoder # scalar was imported as MinMaxScaler
+from keras.layers import Dense, Input, concatenate, Dropout
+from keras.models import Model
+from tensorflow.keras import optimizers
+optimizers.RMSprop
+optimizers.Adam
+
+dataset = load_wine()
+
+#number of sub-networks
+ensemble_num = 10
+
+#80% size of original (training) dataset
+bootstrap_size = 0.8
+
+#80% for training, 20% for test
+training_size = 0.8
+
+#number of neurons in hidden layer
+num_hidden_neurons = 10
+#percentage of weights dropped out before softmax output (this prevents overfitting)
+dropout = 0.25
+
+#number of epochs (complete training episodes over the trainig set) to run
+epochs = 100
+
+#min batch size for better convergence
+batch = 10
+
+#get the holdout trainig andtest set
+temp = []
+
+#one hot encode the targer classes
+one_hot = OneHotEncoder()
+# Initialize MinMaxScaler
+scalar = MinMaxScaler() # Initialize the MinMaxScaler
+dataset['data'] = scalar.fit_transform(dataset['data']) # Use the correct variable name
+dataset['target'] = one_hot.fit_transform(
+    np.reshape(dataset['target'], (-1, 1))).toarray()
+for i in range(len(dataset.data)):
+  temp.append([dataset['data'][i].tolist(), dataset['target'][i].tolist()]) # Convert NumPy arrays to lists
+
+#shuffle the row of the data and targers
+# Convert the list of lists to a NumPy array
+temp = np.array(temp, dtype=object) # Specify dtype=object to handle lists of different lengths
+np.random.shuffle(temp)
+#holdout training and test stop index
+stop = int(training_size*len(dataset.data))
+
+# Extract data and targets, converting lists back to NumPy arrays
+train_X = np.array([np.array(x) for x in temp[:stop, 0]])
+train_y = np.array([np.array(x) for x in temp[:stop, 1]])
+test_X = np.array([np.array(x) for x in temp[stop:, 0]])
+test_y = np.array([np.array(x) for x in temp[stop:, 1]])
+
+#now build
+
+
+sub_net_outputs = []
+sub_net_inputs = []
+for i in range(ensemble_num):
+
+
+  net_inputs = Input(shape=(train_X.shape[1],))
+  sub_net_inputs.append(net_inputs)
+  y = Dense(num_hidden_neurons)(net_inputs)
+  y = Dense(num_hidden_neurons)(y)
+  y = Dropout(dropout)(y) # 'net' is not defined, should be y
+
+  #sub
+  sub_net_outputs.append(y)
+
+
+#now 
+y= concatenate(sub_net_outputs)
+
+y = Dense(train_y[0].shape[0], activation='softmax')(y) # train_Y should be train_y
+
+
+model = Model(inputs=sub_net_inputs, outputs=y)
+model.compile(optimizer='rmsprop', loss='categorical_crossentropy')
+print('\n')
+print("1_Vaishnavi Boga")
+print("Begin training...")
+
+#train the model
+model.fit([train_X] * ensemble_num, train_y, validation_data=[[test_X] * ensemble_num, test_y], # train_Y and test_Y should be train_y and test_y
+          epochs=epochs, batch_size=batch)
+print("Training finished.\n")
+np.set_printoptions(precision=2, suppress=True)
+for i in range(len(test_X)):
+  print("Prediction:" + str(model.predict([test_X[i].reshape(
+      1, test_X[i].shape[0])] * ensemble_num)) + " | True:" + str(test_y[i])) # test_Y should be test_y

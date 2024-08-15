@@ -1,0 +1,48 @@
+!pip install pandas
+!pip install scikit-learn
+!pip install keras
+!pip install tensorflow
+!pip install tensorflow-keras
+!pip install sklearn.model_selection
+!pip install sklearn.preprocessing
+!pip install keras-wrappers-scikit-learn
+!pip install scikeras
+!pip install sklearn-keras
+
+!pip uninstall keras-wrappers-scikit-learn
+
+import keras
+import pandas as pd  # Import pandas with alias
+from keras.models import Sequential
+from keras.layers import Dense
+from scikeras.wrappers import KerasRegressor 
+from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import KFold
+print(keras.__version__)
+
+#load dataset, explicitly specifying comma as separator
+dataframe = pd.read_csv("housing.csv", header=None, sep=',')  # Use sep=','
+dataset = dataframe.values
+
+#split into input (X) and output (Y) variables
+X = dataset[:,0:13]
+Y = dataset[:,13]  # Select the 14th column as the target variable
+
+#define base model (no changes needed here)
+def baseline_model():
+
+  #create model
+  model = Sequential()
+  model.add(Dense(13, input_dim=13, kernel_initializer='normal', activation='relu'))
+  model.add(Dense(1, kernel_initializer='normal'))
+
+  #compile model
+  model.compile(loss='mean_squared_error', optimizer='adam')
+  return model
+
+#evaluate model (no changes needed here)
+estimator = KerasRegressor(build_fn=baseline_model, epochs=100, batch_size=5, verbose=0)
+kfold = KFold(n_splits=10)
+results = cross_val_score(estimator, X, Y, cv=kfold)
+print("1_Vaishnavi Boga \n")
+print("Baseline: %.2f (%.2f) MSE" % (results.mean(), results.std()))
